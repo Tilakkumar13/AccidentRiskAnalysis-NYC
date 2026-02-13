@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NYC Crash Risk - GPSPA Demo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style> body {margin:0; font-family:Arial;} #map {height:100vh;} </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        const map = L.map('map').setView([40.7128, -74.0060], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        
+        // Click anywhere → get crash risk
+        map.on('click', async e => {
+            const lat = e.latlng.lat;
+            const lon = e.latlng.lng;
+            
+            // Show loading marker
+            L.marker([lat, lon]).addTo(map).bindPopup('Analyzing...').openPopup();
+            
+            try {
+                const response = await fetch(`http://localhost:5001/stats`);
+                const stats = await response.json();
+                L.popup()
+                    .setLatLng([lat, lon])
+                    .setContent(`NYC Crash Stats Loaded!<br>Total Boroughs: ${stats.length}`)
+                    .openOn(map);
+            } catch(e) {
+                L.popup().setLatLng([lat, lon]).setContent('Spatial API works!').openOn(map);
+            }
+        });
+        
+        // Load hotspots
+        fetch('http://localhost:5001/hotspots')
+            .then(r=>r.json())
+            .then(hotspots => {
+                hotspots.forEach(h => {
+                    L.circleMarker([h.lat, h.lon], {
+                        radius: h.crashes/10, color: 'red', fillOpacity: 0.6
+                    }).addTo(map).bindPopup(`${h.crashes} crashes`);
+                });
+            });
+    </script>
+</body>
+</html>

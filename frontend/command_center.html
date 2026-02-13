@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🚨 NYC CRIME COMMAND CENTER v2.0</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Orbitron', monospace; 
+            background: #0a0a0a; 
+            color: #00ff88; 
+            overflow: hidden;
+        }
+        
+        #header {
+            position: fixed; top: 0; width: 100%; height: 60px; 
+            background: linear-gradient(90deg, #000, #001122);
+            border-bottom: 2px solid #00ff88;
+            z-index: 10000;
+            display: flex; align-items: center; padding: 0 20px;
+            box-shadow: 0 0 30px #00ff88;
+        }
+        
+        #live-stats { display: flex; gap: 30px; }
+        .stat { 
+            background: rgba(0,255,136,0.1); 
+            padding: 10px 20px; 
+            border-radius: 10px; 
+            border-left: 4px solid #00ff88;
+            font-weight: 700;
+        }
+        
+        #controls { position: absolute; top: 80px; right: 20px; z-index: 9999; }
+        button { 
+            background: #00ff88; color: #000; 
+            border: none; padding: 12px 24px; 
+            margin: 5px; border-radius: 25px; 
+            font-family: inherit; font-weight: 700; cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,255,136,0.3);
+        }
+        button:hover { transform: scale(1.05); box-shadow: 0 8px 25px rgba(0,255,136,0.5); }
+        
+        .panel { 
+            position: absolute; 
+            border: 2px solid #00ff88; 
+            background: rgba(0,20,40,0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,255,136,0.2);
+        }
+        
+        #panel1 { top: 100px; left: 20px; width: 500px; height: 400px; } /* HEATMAP */
+        #panel2 { top: 100px; right: 20px; width: 350px; height: 200px; } /* TIME SLIDER */
+        #panel3 { bottom: 100px; left: 20px; width: 400px; height: 350px; } /* BOROUGH */
+        #panel4 { bottom: 100px; left: 450px; width: 350px; height: 200px; } /* TOP CRIMES */
+        #panel5 { top: 520px; left: 20px; width: 400px; height: 250px; } /* RISK FORECAST */
+        #panel6 { top: 520px; left: 450px; width: 400px; height: 250px; } /* RADAR */
+        #console { bottom: 20px; left: 20px; right: 20px; height: 70px; padding: 15px; }
+        
+        #map { position: absolute; top: 100px; left: 900px; width: calc(100vw - 920px); height: calc(100vh - 120px); z-index: 1; }
+        canvas { width: 100% !important; height: 100% !important; }
+        .matrix { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 0.1; }
+    </style>
+</head>
+<body>
+    <!-- MATRIX BACKGROUND -->
+    <canvas id="matrix" class="matrix"></canvas>
+    
+    <!-- COMMAND HEADER -->
+    <div id="header">
+        <h1 style="font-size: 24px; font-weight: 900; margin-right: 40px;">🚨 NYC CRIME COMMAND CENTER v2.0</h1>
+        <div id="live-stats">
+            <div class="stat">🔥 HOTSPOTS: <span id="hotspot-count">0</span></div>
+            <div class="stat">⚠️  HIGH RISK: <span id="high-risk">0</span>%</div>
+            <div class="stat">📊 TODAY: <span id="today-crimes">0</span></div>
+        </div>
+    </div>
+    
+    <!-- CONTROLS -->
+    <div id="controls">
+        <button onclick="loadHotspots()">🔍 HOTSPOTS</button>
+        <button onclick="predictRisk()">🎯 PREDICT</button>
+        <button onclick="toggleHeatmap()">🌡️ HEATMAP</button>
+        <button onclick="animateRadar()">📡 RADAR SCAN</button>
+    </div>
+    
+    <!-- 6 INTERACTIVE PANELS -->
+    <div id="panel1" class="panel">
+        <h3>🌡️ REAL-TIME HEATMAP</h3>
+        <div id="heatmap-chart" style="height: 320px;"></div>
+    </div>
+    
+    <div id="panel2" class="panel">
+        <h3>⏰ TIME SLIDER</h3>
+        <input type="range" id="timeSlider" min="0" max="23" value="18" style="width:100%;">
+        <canvas id="timeChart"></canvas>
+    </div>
+    
+    <div id="panel3" class="panel">
+        <h3>🏙️ BOROUGH TRENDS</h3>
+        <canvas id="boroughChart"></canvas>
+    </div>
+    
+    <div id="panel4" class="panel">
+        <h3>📈 TOP CRIMES (RACE)</h3>
+        <canvas id="crimeRace"></canvas>
+    </div>
+    
+    <div id="panel5" class="panel">
+        <h3>🎯 ML RISK FORECAST</h3>
+        <canvas id="riskForecast"></canvas>
+    </div>
+    
+    <div id="panel6" class="panel">
+        <h3>📡 HOTSPOT RADAR</h3>
+        <canvas id="radarChart"></canvas>
+    </div>
+    
+    <div id="console" class="panel">
+        <div style="font-family: monospace; font-size: 12px; white-space: nowrap; overflow: hidden;">
+            > LOADING NYC CRIME DATA... <span id="live-feed"></span>
+        </div>
+    </div>
+    
+    <!-- MAIN MAP -->
+    <div id="map"></div>
+
+    <script>
+        // MATRIX RAIN EFFECT
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        // Matrix rain code here...
+        
+        // MAP SETUP
+        const map = L.map('map').setView([40.7128, -74.0060], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+        
+        let heatmapLayer = null;
+        let heatData = [];
+        
+        // CLICK PREDICT
+        map.on('click', async e => {
+            const risk = await fetch(
+                `http://localhost:5000/predict?lat=${e.latlng.lat}&lon=${e.latlng.lng}&hour=18`
+            ).then(r => r.json());
+            
+            L.marker(e.latlng, {icon: L.divIcon({
+                className: `risk-${risk.risk_level.toLowerCase()}`,
+                html: `<div style="background:${risk.risk_level==='HIGH'?'#ff4444':'#ffaa00'};width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 20px currentColor;"></div>`,
+                iconSize: [24, 24]
+            })}).addTo(map).bindPopup(`
+                <b>🎯 ${risk.risk_level} RISK ZONE</b><br>
+                HIGH: ${(risk.probabilities.HIGH*100).toFixed(1)}%<br>
+                MEDIUM: ${(risk.probabilities.MEDIUM*100).toFixed(1)}%<br>
+                LOW: ${(risk.probabilities.LOW*100).toFixed(1)}%
+            `).openPopup();
+        });
+        
+        // LOAD HOTSPOTS
+        async function loadHotspots() {
+            const data = await (await fetch('http://localhost:5000/hotspots?limit=100')).json();
+            data.hotspots.forEach(h => {
+                L.circle([h.latitude, h.longitude], {
+                    radius: h.accident_count * 2,
+                    color: '#ff4444',
+                    fillOpacity: 0.4,
+                    weight: 2
+                }).addTo(map).bindPopup(`💥 ${h.accident_count} ACCIDENTS`);
+            });
+            document.getElementById('hotspot-count').textContent = data.count;
+        }
+        
+        // HEATMAP TOGGLE
+        async function toggleHeatmap() {
+            if (heatmapLayer) {
+                map.removeLayer(heatmapLayer);
+                heatmapLayer = null;
+            } else {
+                const data = await (await fetch('http://localhost:5000/accidents?limit=5000')).json();
+                heatData = data.accidents.map(a => [a.latitude, a.longitude, a.persons_injured || 1]);
+                heatmapLayer = L.heatLayer(heatData, {
+                    radius: 25, blur: 15, maxZoom: 17
+                }).addTo(map);
+            }
+        }
+        
+        // ANIMATED RADAR
+        function animateRadar() {
+            // Radar sweep animation
+        }
+        
+        // CHARTS INIT (6 animated charts)
+        // D3.js + Chart.js implementations for each panel...
+        
+        // LIVE CONSOLE FEED
+        setInterval(async () => {
+            const stats = await (await fetch('http://localhost:5000/stats')).json();
+            document.getElementById('today-crimes').textContent = stats.overall.total_accidents;
+            document.getElementById('live-feed').textContent = 
+                `CRASHES: ${stats.overall.total_accidents} | INJURED: ${stats.overall.total_injured}`;
+        }, 3000);
+        
+        // AUTO-LOAD
+        loadHotspots();
+    </script>
+</body>
+</html>

@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NYC Accident Risk Intelligence</title>
+
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#0b1220;
+     --panel:rgba(14,21,38,.78);
+      --panel2:rgba(11,18,32,.72);
+      --stroke:rgba(255,255,255,.10);
+      --muted:rgba(255,255,255,.72);
+      --text:rgba(255,255,255,.92);
+      --good:#38bdf8;
+      --mid:#fbbf24;
+      --bad:#fb7185;
+      --ok:#a78bfa;
+      --shadow:0 18px 60px rgba(0,0,0,.55);
+      --radius:18px;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--text); }
+    #app{ height:100%; display:grid; grid-template-columns: 360px 1fr 420px; }
+
+    .rail, .right{
+      padding:18px 16px;
+      background: linear-gradient(180deg, rgba(10,16,30,.98), rgba(10,16,30,.88));
+    }
+    .rail{ border-right:1px solid var(--stroke); }
+    .right{ border-left:1px solid var(--stroke); }
+    .mapwrap{ position:relative; }
+    #map{ position:absolute; inset:0; }
+
+    .brand{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+    .logo{
+      width:34px; height:34px; border-radius:12px;
+      background:
+        radial-gradient(120% 120% at 10% 10%, #60a5fa 0%, rgba(96,165,250,0) 55%),
+        radial-gradient(120% 120% at 90% 20%, #a78bfa 0%, rgba(167,139,250,0) 55%),
+        radial-gradient(120% 120% at 30% 90%, #fb7185 0%, rgba(251,113,133,0) 55%),
+        rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.14);
+      box-shadow: 0 10px 24px rgba(0,0,0,.35);
+    }
+    .brand h1{ font-size:14px; letter-spacing:.2px; margin:0; }
+    .brand p{ margin:0; font-size:12px; color:var(--muted); }
+
+    .card{
+      background: var(--panel);
+      border:1px solid var(--stroke);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      backdrop-filter: blur(10px);
+    }
+    .card + .card{ margin-top:12px; }
+    .hd{
+      padding:12px 14px;
+      display:flex; align-items:center; justify-content:space-between;
+      border-bottom:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0));
+      gap:10px;
+    }
+    .hd .t{ font-weight:800; font-size:13px; }
+    .bd{ padding:12px 14px; }
+
+    .chip{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,0.06);
+      font-size:12px; color:var(--muted);
+      user-select:none;
+      white-space:nowrap;
+    }
+    .dot{ width:8px; height:8px; border-radius:999px; background:rgba(255,255,255,.45); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; }
+
+    .toggle{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 10px; border-radius:14px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,0.05);
+      margin-top:10px;
+    }
+    .toggle label{ font-size:12px; color:var(--muted); }
+
+    .switch{
+      width:42px; height:26px; border-radius:999px;
+      background: rgba(255,255,255,0.10);
+      border:1px solid rgba(255,255,255,0.14);
+      position:relative; cursor:pointer;
+    }
+    .knob{
+      width:22px; height:22px; border-radius:999px;
+      background: rgba(255,255,255,0.84);
+      position:absolute; top:1px; left:1px;
+      transition: transform .16s ease;
+    }
+    .switch.on{ background: rgba(56,189,248,0.22); border-color: rgba(56,189,248,0.35); }
+    .switch.on .knob{ transform: translateX(16px); }
+
+    .field{ margin-top:10px; }
+    .field label{ display:block; font-size:12px; color:var(--muted); margin:0 0 6px 2px; }
+    .field input, .field select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:14px;
+      background: rgba(255,255,255,0.06);
+      border:1px solid var(--stroke);
+      color: var(--text);
+      outline:none;
+    }
+
+ .btn{
+      width:100%;
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(180deg, rgba(96,165,250,0.25), rgba(96,165,250,0.10));
+      color: var(--text);
+      font-weight:800;
+      cursor:pointer;
+    }
+    .btn.secondary{
+      background: linear-gradient(180deg, rgba(167,139,250,0.22), rgba(167,139,250,0.08));
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    .hint{ font-size:12px; color:var(--muted); line-height:1.35; }
+    .mini{ font-size:11px; color:rgba(255,255,255,0.55); }
+    .kbd{
+      display:inline-block;
+      padding:2px 6px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.82);
+      font-size:11px;
+      margin:0 2px;
+    }
+
+    .toast{
+      position:absolute; left:16px; bottom:16px;
+      max-width:560px;
+      padding:10px 12px;
+      border-radius:14px;
+      background: rgba(11,18,32,0.75);
+      border:1px solid rgba(255,255,255,0.10);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 50px rgba(0,0,0,.45);
+      font-size:12px;
+      color: var(--muted);
+      display:none;
+      z-index:10;
+    }
+    .toast.show{ display:block; }
+
+    .legend{
+      position:absolute; right:18px; bottom:18px;
+      width:320px;
+      z-index:9;
+    }
+
+    .risk{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px;
+      border-radius:16px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,0.05);
+      gap:10px;
+    }
+    .risk .lvl{ font-size:12px; color:var(--muted); }
+    .risk .big{ font-size:18px; font-weight:900; margin-top:3px; }
+    .badge{
+      padding:8px 10px; border-radius:999px;
+      font-size:12px; font-weight:900;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      white-space:nowrap;
+    }
+    .badge.low{ color:#7dd3fc; border-color:rgba(125,211,252,.35); background: rgba(56,189,248,.14);}
+    .badge.medium{ color:#fde68a; border-color:rgba(253,230,138,.35); background: rgba(251,191,36,.14);}
+    .badge.high{ color:#fecdd3; border-color:rgba(254,205,211,.35); background: rgba(251,113,133,.14);}
+
+    .bars{ margin-top:10px; display:grid; gap:8px; }
+    .bar{
+      display:grid; grid-template-columns: 70px 1fr 44px; gap:10px; align-items:center;
+      font-size:12px; color:var(--muted);
+    }
+    .track{
+      height:10px; border-radius:999px;
+      background: rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.10);
+      overflow:hidden;
+    }
+    .fill{ height:100%; width:0%; border-radius:999px; transition: width .22s ease; }
+    .fill.low{ background: rgba(56,189,248,0.85); }
+    .fill.medium{ background: rgba(251,191,36,0.85); }
+    .fill.high{ background: rgba(251,113,133,0.85); }
+
+    .searchRow{ display:flex; gap:10px; }
+    .searchRow input{ flex:1; }
+    .iconBtn{
+      width:46px; padding:0;
+      display:grid; place-items:center;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      cursor:pointer;
+    }
+    .iconBtn:active{ transform: translateY(1px); }
+
+    .sliderWrap{ margin-top:10px; }
+    .sliderTop{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    input[type="range"]{ width:100%; accent-color: #60a5fa; }
+
+    .table{
+      width:100%;
+      border-collapse:collapse;
+      overflow:hidden;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+    }
+    .table th, .table td{
+      padding:10px 10px;
+      font-size:12px;
+      border-bottom:1px solid rgba(255,255,255,0.08);
+    }
+    .table th{ text-align:left; color:rgba(255,255,255,.75); font-weight:800; }
+    .table td{ color:rgba(255,255,255,.86); }
+    .table tr{ cursor:pointer; }
+    .table tr:hover{ background: rgba(255,255,255,0.05); }
+    .pill{
+      display:inline-block;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      font-weight:800;
+      font-size:11px;
+      color:rgba(255,255,255,.78);
+    }
+
+    @media (max-width: 1100px){
+      #app{ grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+      .rail{ border-right:none; border-bottom:1px solid var(--stroke); }
+      .right{ border-left:none; border-top:1px solid var(--stroke); }
+      .mapwrap{ min-height: 60vh; }
+      .legend{ position:static; width:auto; margin:12px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <aside class="rail">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <h1>NYC Accident Risk Intelligence</h1>
+          <p>Hotspots + ML prediction • PostGIS + Flask API</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
+          <div class="t">Explore</div>
+          <span class="chip"><span class="dot" id="apiDot"></span><span id="apiStatus">API: checking…</span></span>
+        </div>
+        <div class="bd">
+          <div class="field">
+            <label>Search place / address</label>
+            <div class="searchRow">
+              <input id="searchQ" placeholder="e.g., Times Square, Brooklyn Bridge, JFK Airport" />
+              <button id="btnSearch" class="iconBtn" title="Search">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M10.5 18.5a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" stroke="rgba(255,255,255,.85)" stroke-width="2"/>
+                  <path d="M16.8 16.8 21 21" stroke="rgba(255,255,255,.85)" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="hint" style="margin-top:8px;">
+            Map click predicts risk. Search flies to a location and auto-predicts.
+          </div>
+
+          <div class="toggle">
+            <label>Hotspots</label>
+            <div id="tgHotspots" class="switch on" role="switch" aria-checked="true"><div class="knob"></div></div>
+          </div>
+
+          <div class="toggle">
+            <label>Risk shading (grid)</label>
+            <div id="tgRiskGrid" class="switch" role="switch" aria-checked="false"><div class="knob"></div></div>
+          </div>
+
+          <div class="field">
+            <label>Hotspot limit</label>
+            <input id="hotspotLimit" type="number" min="5" max="500" step="5" value="60" />
+          </div>
+
+          <button id="btnReloadHotspots" class="btn">Reload hotspots</button>
+
+          <div class="mini" style="margin-top:10px;">
+            Tips: <span class="kbd">Shift</span>+Click to set inspector without moving the map. <span class="kbd">Cmd</span>/<span class="kbd">Ctrl</span>+L then paste a Postman URL to compare.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd"><div class="t">Time controls</div></div>
+        <div class="bd">
+          <div class="sliderWrap">
+            <div class="sliderTop">
+              <div class="chip"><span class="dot" style="background:rgba(96,165,250,.8)"></span>Hour</div>
+              <div class="chip" id="hourChip">18:00</div>
+            </div>
+            <input id="hourSlider" type="range" min="0" max="23" value="18" />
+          </div>
+
+          <div class="field">
+            <label>Day of week</label>
+            <select id="dow">
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4" selected>Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </div>
+
+          <button id="btnAnimate" class="btn secondary">Animate 24h (play)</button>
+
+          <div class="hint" style="margin-top:10px;">
+            Risk grid uses the API to estimate risk across the current viewport for the chosen time.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd"><div class="t">Top hotspots</div></div>
+        <div class="bd">
+          <table class="table" id="hotspotsTable">
+            <thead>
+              <tr><th>#</th><th>Accidents</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="3" class="mini">Load hotspots to populate table…</td></tr>
+            </tbody>
+          </table>
+          <div class="mini" style="margin-top:10px;">
+            Click a row to fly to the hotspot and predict risk at that point.
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="mapwrap">
+      <div id="map"></div>
+      <div class="toast" id="toast"></div>
+
+      <div class="legend card" id="legendCard">
+        <div class="hd"><div class="t">Legend</div></div>
+        <div class="bd">
+          <div class="row">
+            <span class="chip"><span class="dot" style="background: rgba(56,189,248,.85)"></span>LOW</span>
+            <span class="chip"><span class="dot" style="background: rgba(251,191,36,.85)"></span>MEDIUM</span>
+            <span class="chip"><span class="dot" style="background: rgba(251,113,133,.85)"></span>HIGH</span>
+          </div>
+          <div class="hint" style="margin-top:10px;">
+            Hotspots are circles sized by accident_count. Risk shading is a viewport grid estimation (client-sampled).
+          </div>
+        </div>
+      </div>
+   </main>
+
+    <aside class="right">
+      <div class="card">
+        <div class="hd"><div class="t">Inspector</div></div>
+        <div class="bd">
+          <div class="risk">
+            <div>
+              <div class="lvl">Predicted risk</div>
+              <div class="big" id="riskText">Click on the map</div>
+              <div class="mini" id="coordText">—</div>
+            </div>
+            <div id="riskBadge" class="badge">—</div>
+          </div>
+
+          <div class="bars">
+            <div class="bar">
+              <div>LOW</div>
+              <div class="track"><div id="pLow" class="fill low"></div></div>
+              <div id="tLow">—</div>
+            </div>
+            <div class="bar">
+              <div>MEDIUM</div>
+              <div class="track"><div id="pMed" class="fill medium"></div></div>
+              <div id="tMed">—</div>
+            </div>
+            <div class="bar">
+              <div>HIGH</div>
+              <div class="track"><div id="pHigh" class="fill high"></div></div>
+              <div id="tHigh">—</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px" class="hint" id="modeText">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd"><div class="t">Demo story</div></div>
+        <div class="bd">
+          <div class="hint">
+            <b>Spatial analysis:</b> hotspot clustering + density patterns.<br><br>
+            <b>ML layer:</b> predicted risk at any location/time.<br><br>
+            <b>System:</b> PostGIS → Flask API → professional interactive UI.
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <script>
+    // ---------------------------
+    // CONFIG
+    // ---------------------------
+    const API_BASE = "http://127.0.0.1:5001";
+    mapboxgl.accessToken = "PASTE_YOUR_MAPBOX_TOKEN_HERE"; // <-- set token
+
+    // ---------------------------
+    // helpers
+    // ---------------------------
+    const $ = (id) => document.getElementById(id);
+    const toast = (msg) => {
+      const el = $("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(window.__toastT);
+      window.__toastT = setTimeout(()=> el.classList.remove("show"), 3200);
+    };
+    const setSwitch = (el, on) => {
+      el.classList.toggle("on", on);
+      el.setAttribute("aria-checked", on ? "true" : "false");
+    };
+    const toggleSwitch = (el) => setSwitch(el, !el.classList.contains("on"));
+
+    const setBadge = (level) => {
+      const b = $("riskBadge");
+      b.classList.remove("low","medium","high");
+      if (!level) { b.textContent = "—"; return; }
+      b.textContent = level;
+      b.classList.add(level.toLowerCase());
+    };
+    const setProbs = (p) => {
+      const clamp = (x)=> Math.max(0, Math.min(1, x));
+      const low = clamp(p.LOW ?? 0), med = clamp(p.MEDIUM ?? 0), high = clamp(p.HIGH ?? 0);
+      $("pLow").style.width = (low*100).toFixed(0) + "%";
+      $("pMed").style.width = (med*100).toFixed(0) + "%";
+      $("pHigh").style.width = (high*100).toFixed(0) + "%";
+      $("tLow").textContent = (low*100).toFixed(0) + "%";
+      $("tMed").textContent = (med*100).toFixed(0) + "%";
+      $("tHigh").textContent = (high*100).toFixed(0) + "%";
+    };
+
+    async function apiGet(path){
+      const res = await fetch(API_BASE + path);
+      if(!res.ok){
+        const t = await res.text().catch(()=> "");
+        throw new Error(`HTTP ${res.status} ${t}`);
+      }
+      return res.json();
+    }
+
+    // Mapbox Geocoding (Search)
+    async function geocode(query){
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&autocomplete=true&limit=1&proximity=-73.9851,40.7589`;
+      const res = await fetch(url);
+      if(!res.ok) throw new Error("Geocoding failed");
+      const data = await res.json();
+      const feat = data.features && data.features[0];
+      if(!feat) return null;
+      return { name: feat.place_name, lon: feat.center[0], lat: feat.center[1] };
+    }
+
+    // ---------------------------
+    // map init
+    // ---------------------------
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/mapbox/dark-v11",
+      center: [-73.9851, 40.7589],
+      zoom: 10.7,
+      pitch: 35,
+      bearing: -12,
+      antialias: true
+    });
+    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
+
+    // API status indicator
+    (async ()=>{
+      try{
+        await apiGet("/health");
+        $("apiStatus").textContent = "API: online";
+        $("apiDot").style.background = "rgba(56,189,248,.85)";
+      }catch(e){
+        $("apiStatus").textContent = "API: offline";
+        $("apiDot").style.background = "rgba(251,113,133,.85)";
+        toast("API not reachable. Start Flask on :5001");
+      }
+    })();
+
+    // ---------------------------
+    // hour/day controls
+    // ---------------------------
+    function hourLabel(h){
+      const hh = String(h).padStart(2,"0");
+      return `${hh}:00`;
+    }
+    function getHour(){ return parseInt($("hourSlider").value || "18", 10); }
+    function getDOW(){ return parseInt($("dow").value || "4", 10); }
+    function syncHourUI(){
+      $("hourChip").textContent = hourLabel(getHour());
+    }
+    $("hourSlider").addEventListener("input", ()=> {
+      syncHourUI();
+      // If grid enabled, rebuild lightly (debounced)
+      if($("tgRiskGrid").classList.contains("on")){
+        debounceBuildGrid();
+      }
+    });
+    $("dow").addEventListener("change", ()=> {
+      if($("tgRiskGrid").classList.contains("on")){
+        debounceBuildGrid();
+      }
+    });
+    syncHourUI();
+
+    // ---------------------------
+    // inspector + prediction
+    // ---------------------------
+    let inspectorMarker = null;
+
+    async function predictAt(lngLat){
+      const hour = getHour();
+      const dow = getDOW();
+      const lat = lngLat.lat, lon = lngLat.lng;
+
+      $("riskText").textContent = "Predicting…";
+      $("coordText").textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)} • hour=${hour} • dow=${dow}`;
+      setBadge(null);
+      setProbs({LOW:0,MEDIUM:0,HIGH:0});
+      $("modeText").textContent = "Calling API…";
+
+      try{
+        const r = await apiGet(`/predict?lat=${lat}&lon=${lon}&hour=${hour}&day_of_week=${dow}`);
+        $("riskText").textContent = String(r.risk_level);
+        setBadge(String(r.risk_level));
+        setProbs(r.probabilities || {});
+        $("modeText").textContent = `Mode: ${r.mode || "model"} • model_loaded should be true for real predictions`;
+      }catch(e){
+        $("riskText").textContent = "Error";
+        $("modeText").textContent = "Prediction failed. Check API logs.";
+        toast("Prediction failed");
+        console.error(e);
+      }
+    }
+
+    function setInspector(lngLat){
+      if(!inspectorMarker){
+        inspectorMarker = new mapboxgl.Marker({ color:"#a78bfa" }).setLngLat(lngLat).addTo(map);
+      }else{
+        inspectorMarker.setLngLat(lngLat);
+      }
+    }
+
+    map.on("click", async (e)=>{
+      setInspector(e.lngLat);
+      await predictAt(e.lngLat);
+    });
+
+    // ---------------------------
+    // hotspots layer + table
+    // ---------------------------
+    let hotspotsGeojson = { type:"FeatureCollection", features:[] };
+
+    function buildHotspotsTable(features){
+      const tbody = $("hotspotsTable").querySelector("tbody");
+      tbody.innerHTML = "";
+      if(!features.length){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="3" class="mini">No hotspots returned.</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+
+      const top = features.slice(0, 10);
+      top.forEach((f, i)=>{
+        const cnt = f.properties.accident_count;
+        const lon = f.geometry.coordinates[0];
+        const lat = f.geometry.coordinates[1];
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><span class="pill">${i+1}</span></td>
+          <td><b>${cnt}</b></td>
+          <td><span class="pill">Fly</span></td>
+        `;
+        tr.addEventListener("click", async ()=>{
+          map.flyTo({ center:[lon,lat], zoom: 14.2, speed: 0.9, curve: 1.4, essential: true });
+          setInspector({lng: lon, lat: lat});
+          await predictAt({lng: lon, lat: lat});
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadHotspots(){
+      const limit = parseInt($("hotspotLimit").value || "60", 10);
+      try{
+        const data = await apiGet(`/hotspots?limit=${limit}`);
+        const feats = (data.hotspots || []).map((h)=>({
+          type:"Feature",
+          geometry:{ type:"Point", coordinates:[Number(h.longitude), Number(h.latitude)] },
+          properties:{ accident_count: Number(h.accident_count) }
+        }));
+
+        hotspotsGeojson = { type:"FeatureCollection", features: feats };
+
+        if(map.getSource("hotspots")){
+          map.getSource("hotspots").setData(hotspotsGeojson);
+        }
+        buildHotspotsTable(feats.sort((a,b)=> b.properties.accident_count - a.properties.accident_count));
+        toast(`Loaded ${feats.length} hotspots`);
+      }catch(e){
+        toast("Failed to load hotspots");
+        console.error(e);
+      }
+    }
+
+    function addHotspotsLayer(){
+      if(map.getSource("hotspots")) return;
+      map.addSource("hotspots", { type:"geojson", data: hotspotsGeojson });
+
+      map.addLayer({
+        id:"hotspots-circles",
+        type:"circle",
+        source:"hotspots",
+        paint:{
+          "circle-color": [
+            "interpolate", ["linear"], ["get","accident_count"],
+            6, "rgba(56,189,248,0.65)",
+            12, "rgba(251,191,36,0.65)",
+            25, "rgba(251,113,133,0.72)"
+          ],
+          "circle-stroke-color":"rgba(255,255,255,0.18)",
+          "circle-stroke-width": 1,
+          "circle-radius": [
+            "interpolate", ["linear"], ["get","accident_count"],
+            6, 5,
+            12, 9,
+            25, 14,
+            60, 20
+          ],
+          "circle-blur": 0.15,
+          "circle-opacity": 0.95
+        }
+      });
+    }
+
+    function setHotspotsVisible(visible){
+      const v = visible ? "visible" : "none";
+      if(map.getLayer("hotspots-circles")) map.setLayoutProperty("hotspots-circles", "visibility", v);
+    }
+
+    // ---------------------------
+    // Risk grid (heat layer)
+    // ---------------------------
+    let buildGridAbort = { aborted:false };
+    async function buildRiskGrid(){
+      const token = { aborted:false };
+      buildGridAbort.aborted = true;
+      buildGridAbort = token;
+
+      const bounds = map.getBounds();
+      const z = map.getZoom();
+      const steps = z >= 12 ? 14 : 10; // grid density
+      const lons = [], lats = [];
+      for(let i=0;i<steps;i++){
+        lons.push(bounds.getWest() + (bounds.getEast()-bounds.getWest())*(i/(steps-1)));
+        lats.push(bounds.getSouth()+ (bounds.getNorth()-bounds.getSouth())*(i/(steps-1)));
+      }
+
+      const hour = getHour();
+      const dow = getDOW();
+
+      const feats = [];
+      let completed = 0;
+      const total = lats.length * lons.length;
+
+      for(const lat of lats){
+        for(const lon of lons){
+          if(token.aborted) return;
+
+          try{
+            const r = await apiGet(`/predict?lat=${lat}&lon=${lon}&hour=${hour}&day_of_week=${dow}`);
+            const p = r.probabilities || {};
+            const score = (p.HIGH ?? 0) * 1.0 + (p.MEDIUM ?? 0) * 0.5; // composite
+            feats.push({
+              type:"Feature",
+              geometry:{ type:"Point", coordinates:[lon, lat] },
+              properties:{ score }
+            });
+          }catch(e){
+            // ignore a few failures
+          }
+
+          completed++;
+          if(completed % 18 === 0){
+            $("modeText").textContent = `Building risk grid… ${(completed/total*100).toFixed(0)}%`;
+          }
+        }
+      }
+
+      const gj = { type:"FeatureCollection", features:feats };
+
+      if(map.getSource("riskgrid")){
+        map.getSource("riskgrid").setData(gj);
+      }else{
+        map.addSource("riskgrid", { type:"geojson", data: gj });
+        map.addLayer({
+          id:"riskgrid-heat",
+          type:"heatmap",
+          source:"riskgrid",
+          paint:{
+            "heatmap-weight": ["interpolate", ["linear"], ["get","score"], 0, 0, 1, 1],
+            "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 9, 0.7, 13, 1.25],
+            "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 9, 18, 13, 34],
+            "heatmap-opacity": 0.70,
+            "heatmap-color": [
+              "interpolate", ["linear"], ["heatmap-density"],
+              0.00, "rgba(56,189,248,0.0)",
+              0.12, "rgba(56,189,248,0.55)",
+              0.35, "rgba(251,191,36,0.65)",
+              0.60, "rgba(251,113,133,0.70)",
+              0.85, "rgba(251,113,133,0.90)"
+            ]
+          }
+        });
+      }
+
+      $("modeText").textContent = "Risk grid updated";
+      toast("Risk grid updated");
+    }
+
+    function setRiskGridVisible(visible){
+      const v = visible ? "visible" : "none";
+      if(map.getLayer("riskgrid-heat")) map.setLayoutProperty("riskgrid-heat", "visibility", v);
+    }
+
+    let gridDebounceT = null;
+    function debounceBuildGrid(){
+      clearTimeout(gridDebounceT);
+      gridDebounceT = setTimeout(async ()=>{
+        if(!$("tgRiskGrid").classList.contains("on")) return;
+        toast("Updating risk grid…");
+        await buildRiskGrid();
+        setRiskGridVisible(true);
+      }, 450);
+    }
+
+    map.on("moveend", ()=>{
+      if($("tgRiskGrid").classList.contains("on")){
+        debounceBuildGrid();
+      }
+    });
+
+    // ---------------------------
+    // Search
+    // ---------------------------
+    async function doSearch(){
+      const q = ($("searchQ").value || "").trim();
+      if(!q) return toast("Type a place to search");
+      try{
+        const r = await geocode(q);
+        if(!r) return toast("No results");
+        map.flyTo({ center:[r.lon,r.lat], zoom: 14.2, speed: 0.9, curve: 1.4, essential: true });
+        setInspector({lng:r.lon, lat:r.lat});
+        toast(`Found: ${r.name}`);
+        await predictAt({lng:r.lon, lat:r.lat});
+      }catch(e){
+        toast("Search failed (check Mapbox token)");
+        console.error(e);
+      }
+    }
+    $("btnSearch").addEventListener("click", doSearch);
+    $("searchQ").addEventListener("keydown", (e)=>{ if(e.key === "Enter") doSearch(); });
+
+    // ---------------------------
+    // Toggles + actions
+    // ---------------------------
+    $("btnReloadHotspots").addEventListener("click", loadHotspots);
+
+    $("tgHotspots").addEventListener("click", ()=>{
+      toggleSwitch($("tgHotspots"));
+      setHotspotsVisible($("tgHotspots").classList.contains("on"));
+    });
+
+    $("tgRiskGrid").addEventListener("click", async ()=>{
+      toggleSwitch($("tgRiskGrid"));
+      const on = $("tgRiskGrid").classList.contains("on");
+      if(on){
+        toast("Building risk grid… (10–20s)");
+        await buildRiskGrid();
+      }
+      setRiskGridVisible(on);
+    });
+
+    // ---------------------------
+    // Animate 24h (play/pause)
+    // ---------------------------
+    let animTimer = null;
+
+    async function stepHour(nextHour){
+      $("hourSlider").value = String(nextHour);
+      syncHourUI();
+
+      // update inspector prediction (if marker exists)
+      if(inspectorMarker){
+        const lngLat = inspectorMarker.getLngLat();
+        await predictAt({ lng: lngLat.lng, lat: lngLat.lat });
+      }
+
+      // update grid if enabled
+      if($("tgRiskGrid").classList.contains("on")){
+        debounceBuildGrid();
+      }
+    }
+
+    $("btnAnimate").addEventListener("click", ()=>{
+      if(animTimer){
+        clearInterval(animTimer);
+        animTimer = null;
+        $("btnAnimate").textContent = "Animate 24h (play)";
+        toast("Animation paused");
+        return;
+      }
+
+      $("btnAnimate").textContent = "Animate 24h (pause)";
+      toast("Animating hour-of-day…");
+
+      animTimer = setInterval(async ()=>{
+        const h = getHour();
+        const next = (h + 1) % 24;
+        await stepHour(next);
+      }, 900);
+    });
+
+    // ---------------------------
+    // On load
+    // ---------------------------
+    map.on("load", async ()=>{
+      addHotspotsLayer();
+      await loadHotspots();
+      setHotspotsVisible(true);
+      setRiskGridVisible(false);
+      toast("Ready. Click the map to predict risk.");
+    });
+  </script>
+</body>
+</html>
+
+

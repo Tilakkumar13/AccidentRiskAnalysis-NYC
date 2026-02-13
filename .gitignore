@@ -1,0 +1,15 @@
+# Ignore large data files
+data/nyc_crashes.csv
+
+# Virtual environment
+accident_risk_env/
+
+# Mac files
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Model files
+*.pkl
