@@ -12,12 +12,10 @@
         const map = L.map('map').setView([40.7128, -74.0060], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         
-        // Click anywhere → get crash risk
         map.on('click', async e => {
             const lat = e.latlng.lat;
             const lon = e.latlng.lng;
             
-            // Show loading marker
             L.marker([lat, lon]).addTo(map).bindPopup('Analyzing...').openPopup();
             
             try {
