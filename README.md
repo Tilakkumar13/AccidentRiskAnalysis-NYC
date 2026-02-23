@@ -2,7 +2,18 @@
 
 🚀 Project Overview
 
-This project builds a full geospatial accident intelligence system for New York City.
+The Accident Risk Analysis System is a data-driven geospatial intelligence platform designed to analyze, detect, and predict accident risk across New York City.
+• This system uses historical NYC crash data, spatial clustering techniques, and machine learning models to:
+• Identify accident hotspots
+• Predict accident risk at specific locations and times
+• Provide a risk score (Low / Medium / High)
+• Allow users to report new accidents
+• Continuously improve predictions using new data
+The goal of this project is to support smarter urban planning, safer route analysis, and real-time accident risk awareness.
+
+⸻
+
+🧠 System Architecture
 
 It combines:
 	•	Live ETL data ingestion
@@ -13,6 +24,16 @@ It combines:
 	•	Spatial proximity risk propagation
 
 The system predicts accident risk levels (LOW / MEDIUM / HIGH) for any location in NYC and identifies nearby hotspots using spatial clustering.
+
+⸻
+🔄 Workflow
+
+• Crash data is fetched from NYC Open Data.
+• Data is cleaned and transformed.
+• Data is stored in PostgreSQL with spatial indexing.
+• Hotspots are detected using DBSCAN clustering.
+• ML model is trained on historical crash patterns.
+• User queries API → system returns risk score + probability.
 
 ⸻
 
