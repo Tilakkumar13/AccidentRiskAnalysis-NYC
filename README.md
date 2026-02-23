@@ -36,7 +36,29 @@ The system predicts accident risk levels (LOW / MEDIUM / HIGH) for any location 
 • User queries API → system returns risk score + probability.
 
 ⸻
+🧠 System Architecture
 
+The system is divided into five main components:
+
+• ETL Pipeline
+• Database (PostgreSQL + PostGIS)
+• Machine Learning Module
+• REST API (Flask)
+• Frontend Visualization
+⸻
+🗂 Project Structure
+
+AccidentRiskAnalysis-NYC/
+│
+├── etl/                 # Data extraction and preprocessing scripts
+├── database/            # Database schema and spatial setup
+├── ml/                  # Machine learning model training and prediction
+├── api/                 # Flask REST API
+├── frontend/            # Map visualization and UI
+├── analysis/            # Exploratory data analysis notebooks
+├── requirements.txt     # Python dependencies
+└── README.md            # Project documentation
+⸻
 🎯 Key Features
 
 🔍 1. Risk Prediction
@@ -93,8 +115,8 @@ This creates spatial + temporal intelligence.
 
 Backend
 	•	Python
-	•	Flask
-	•	SQLAlchemy
+	•	Flask 
+	•	SQLAlchemy 
 	•	Joblib (ML model loading)
 
 Database
@@ -110,6 +132,22 @@ Geospatial
 	•	GeoPandas
 	•	DBSCAN clustering
 	•	Folium heatmaps
+	⸻
+
+📊 Dataset
+
+The project uses NYC Motor Vehicle Collision Data from NYC Open Data.
+
+The dataset includes:
+
+	• Date & time of crash
+	• Latitude & longitude
+	• Borough
+	• Contributing factors
+	• Number of injuries / fatalities
+
+Data is cleaned and transformed before being stored in the database.
+⸻
 
 🗄️ Database Design
 
@@ -170,6 +208,7 @@ severity_avg
 FLOAT
 geom
 GEOMETRY(Point, 4326)
+⸻
 
 🏗️ Project Structure
 
@@ -220,9 +259,22 @@ Submit new accident
 /reports
 View user reports
 
+⸻
+
+📌 Future Improvements
+
+• Real-time traffic integration
+• Weather data integration
+• Deep learning models
+• Deployment to cloud (AWS / GCP)
+• Mobile app integration
+
+⸻
+
 
 👨‍💻 Author
 
 Tilak Kumar
+Vijay
 MSc Geospatial Technologies
 
