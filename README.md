@@ -1,280 +1,213 @@
-🗽 NYC Accident Risk Analysis & Prediction System
+# NYC Accident Risk Intelligence (GPSPA Project)
 
-🚀 Project Overview
+A full-stack geospatial system that analyzes NYC crash data with **PostGIS spatial queries**, **hotspot detection**, and an **ML severity-risk predictor**, exposed through a **Flask API** and an interactive **Mapbox web UI**.
 
-The Accident Risk Analysis System is a data-driven geospatial intelligence platform designed to analyze, detect, and predict accident risk across New York City.
-• This system uses historical NYC crash data, spatial clustering techniques, and machine learning models to:
-• Identify accident hotspots
-• Predict accident risk at specific locations and times
-• Provide a risk score (Low / Medium / High)
-• Allow users to report new accidents
-• Continuously improve predictions using new data
-The goal of this project is to support smarter urban planning, safer route analysis, and real-time accident risk awareness.
+---
 
-⸻
+## Project Overview
 
-🧠 System Architecture
+This project helps users explore accident patterns in New York City by:
 
-It combines:
-	•	Live ETL data ingestion
-	•	PostGIS spatial database
-	•	Machine Learning risk prediction
-	•	DBSCAN hotspot clustering
-	•	Real-time user-reported accident integration
-	•	Spatial proximity risk propagation
+- Visualizing **accident hotspots** (cluster-based points ranked by crash counts)
+- Predicting **severity risk level** (LOW / MEDIUM / HIGH) for a location + time
+- Showing nearby crash density (e.g., number of crashes within **300m**)
+- Allowing users to **submit accident reports** (stored in DB + shown on map)
+- Providing a responsive UI with search, layers, and time controls
 
-The system predicts accident risk levels (LOW / MEDIUM / HIGH) for any location in NYC and identifies nearby hotspots using spatial clustering.
+> Important note (honest definition):  
+> The ML model in this project predicts **severity level** (based on injuries/fatalities), not the probability that an accident will occur.
 
-⸻
-🔄 Workflow
+---
 
-• Crash data is fetched from NYC Open Data.
-• Data is cleaned and transformed.
-• Data is stored in PostgreSQL with spatial indexing.
-• Hotspots are detected using DBSCAN clustering.
-• ML model is trained on historical crash patterns.
-• User queries API → system returns risk score + probability.
+## Technical Stack
 
-⸻
-🧠 System Architecture
+- **Language:** Python 3.10+
+- **Database:** PostgreSQL + PostGIS
+- **Backend/API:** Flask + SQLAlchemy
+- **Data/ML:** Pandas, Scikit-learn, Joblib
+- **Frontend:** HTML/CSS/JS + Mapbox GL JS
 
-The system is divided into five main components:
+---
 
-• ETL Pipeline
-• Database (PostgreSQL + PostGIS)
-• Machine Learning Module
-• REST API (Flask)
-• Frontend Visualization
-⸻
-🗂 Project Structure
-
-AccidentRiskAnalysis-NYC/
-│
-├── etl/                 # Data extraction and preprocessing scripts
-├── database/            # Database schema and spatial setup
-├── ml/                  # Machine learning model training and prediction
-├── api/                 # Flask REST API
-├── frontend/            # Map visualization and UI
-├── analysis/            # Exploratory data analysis notebooks
-├── requirements.txt     # Python dependencies
-└── README.md            # Project documentation
-⸻
-🎯 Key Features
-
-🔍 1. Risk Prediction
-	•	Predicts accident probability using a trained ML model.
-	•	Inputs: latitude, longitude, hour, day of week.
-	•	Returns:
-	•	Risk level
-	•	Probability distribution
-	•	Nearby accidents within 300m
-	•	Nearby hotspots within 400m
-
-⸻
-
-🗺 2. Spatial Hotspot Detection
-	•	DBSCAN clustering on crash coordinates.
-	•	Automatically generates accident_hotspots table.
-	•	Heatmap + centroid visualization.
-	•	Spatial index using GiST for performance.
-
-⸻
-
-🚨 3. Live User Accident Reporting
-
-Users can report new accidents via API:
-	•	Automatically generates a valid BIGINT crash_id
-	•	Inserts into:
-	•	crashes
-	•	user_reports
-	•	Linked by foreign key
-	•	Instantly affects spatial predictions
-
-⸻
-
-🔄 4. Automated ETL Pipeline
-	•	Extracts live NYC crash data
-	•	Cleans & transforms
-	•	Upserts into PostGIS
-	•	Designed for cron automation
-
-⸻
-
-🧠 5. Neighbor Risk Propagation
-
-When predicting risk:
-	•	Counts crashes within 300 meters
-	•	Detects hotspot clusters within 400 meters
-	•	Adds temporal crash density (same hour)
-
-This creates spatial + temporal intelligence.
-
-⸻
-
-🛠️ Tech Stack
-
-Backend
-	•	Python
-	•	Flask 
-	•	SQLAlchemy 
-	•	Joblib (ML model loading)
-
-Database
-	•	PostgreSQL
-	•	PostGIS
-	•	GiST spatial indexes
-
-Machine Learning
-	•	Scikit-learn
-	•	Random Forest classifier
-
-Geospatial
-	•	GeoPandas
-	•	DBSCAN clustering
-	•	Folium heatmaps
-	⸻
-
-📊 Dataset
-
-The project uses NYC Motor Vehicle Collision Data from NYC Open Data.
-
-The dataset includes:
-
-	• Date & time of crash
-	• Latitude & longitude
-	• Borough
-	• Contributing factors
-	• Number of injuries / fatalities
-
-Data is cleaned and transformed before being stored in the database.
-⸻
-
-🗄️ Database Design
-
-crashes (Merged Design)
-
-Column
-Type
-crash_id
-BIGINT (PK)
-crash_datetime
-TIMESTAMP
-borough
-VARCHAR
-latitude
-DOUBLE
-longitude
-DOUBLE
-geom
-GEOMETRY(Point, 4326)
-persons_injured
-INT
-persons_killed
-INT
-vehicle_type
-VARCHAR
-contributing_factor
-VARCHAR
-source
-VARCHAR (open_data / user_report)
-created_at
-TIMESTAMP
-
-user_reports
-
-Column
-Type
-crash_id
-BIGINT (FK → crashes)
-report_time
-TIMESTAMP
-description
-TEXT
-severity
-VARCHAR
-latitude
-DOUBLE
-longitude
-DOUBLE
-
-accident_hotspots
-Column
-Type
-cluster_id
-INT
-accident_count
-INT
-severity_avg
-FLOAT
-geom
-GEOMETRY(Point, 4326)
-⸻
-
-🏗️ Project Structure
-
+## Repository Structure (Typical)
 accident-risk-nyc/
-├── etl/                 # Extract, transform, load pipeline
-│   ├── extract/
-│   ├── transform/
-│   ├── load/
-│   └── pipeline.py
-│
-├── database/
-│   └── schema/
-│       └── schema.sql
-│
-├── api/
-│   ├── app.py           # Main Flask API
-│   └── hotspots.py      # DBSCAN clustering script
-│
-├── ml/
-│   ├── train.py
-│   └── model.pkl
-│
-├── frontend/
-│   ├── index.html
-│   └── map visualizations
-│
-├── analysis/
-│   └── eda.py
-│
-└── README.md
+etl/                 # ETL scripts (extract/transform/load)
+database/            # schema SQL, helpers
+ml/                  # training scripts + saved model.pkl
+api/                 # Flask API (app.py)
+frontend/            # Mapbox UI (index.html)
+requirements.txt
 
-⚡ How To Run Locally
+---
 
-Endpoint
-Description
-/health
-API + DB status
-/stats
-Borough statistics
-/accidents
-Recent crash list
-/hotspots
-Cluster summary
-/predict
-Risk prediction
-/report (POST)
-Submit new accident
-/reports
-View user reports
+## Data Extraction / ETL
+
+Crash data is loaded into PostGIS and cleaned to ensure usable spatial records.
+
+### ETL tasks include:
+- Removing rows with invalid coordinates (NULL or 0,0)
+- Creating a geometry column:
+  - `geom = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)`
+- Creating/refreshing spatial indexes for fast queries
+- Preparing data for:
+  - Hotspot detection
+  - Severity scoring
+  - ML training
+
+---
+
+## Spatial Analysis: Hotspots
+
+Hotspots represent areas with high crash density and are returned via the API from a dedicated table:
+
+- **Table:** `accident_hotspots`
+- **Fields used in UI:** `geom`, `accident_count`, `severity_avg`
+- The frontend displays hotspots as circles sized by `accident_count`.
+
+Endpoint:
+- `GET /hotspots?limit=60`
+
+---
+
+## Machine Learning (Severity Risk Model)
+
+The ML component predicts **severity risk level** for a location and time.
+
+### Label definition (severity-based)
+A severity score is computed from crash outcomes:
+
+- `severity_score = persons_injured + (persons_killed * 10)`
+
+Risk levels are derived from severity thresholds into:
+- LOW
+- MEDIUM
+- HIGH
+
+### Features (current model)
+- latitude, longitude
+- hour, day_of_week
+- is_night, is_weekend
+- borough_code (set to 0 for arbitrary map points unless borough is known)
+
+Endpoint:
+- `GET /predict?lat=..&lon=..&hour=..&day_of_week=..`
+
+The API returns:
+- predicted label
+- class probabilities
+- count of nearby crashes within 300m (PostGIS `ST_DWithin`)
+
+---
+
+## Database
+
+### Main Tables
+
+#### 1) `crashes`
+Stores crash records (open data + user reports)
+
+Key columns:
+- crash_id (BIGINT, PK)
+- crash_datetime
+- borough
+- latitude, longitude
+- geom (Point, 4326)
+- persons_injured, persons_killed
+- source (`open_data` or `user_report`)
+
+#### 2) `user_reports`
+User-submitted incidents.
+
+**Requirement implemented:** the report uses the **same crash_id** in both `crashes` and `user_reports`.
+
+#### 3) `accident_hotspots`
+Stores hotspot point geometry + stats.
+
+#### 4) `predictions`
+Optional logging table for saved predictions.
+
+---
+
+## API
+
+The Flask API connects the PostGIS database and the frontend UI.
+
+### Core endpoints
+
+| Method | Endpoint | Description |
+|-------:|----------|-------------|
+| GET | `/health` | Check DB + model status |
+| GET | `/stats` | Crash stats by borough |
+| GET | `/hotspots?limit=60` | Hotspot points |
+| GET | `/accidents?limit=200` | Recent crashes |
+| GET | `/accident/<crash_id>` | Crash details |
+| GET | `/predict?lat=&lon=&hour=&day_of_week=` | ML severity risk prediction + 300m count |
+| POST | `/report` | Create user report (inserts into crashes + user_reports) |
+| PUT | `/report/<crash_id>` | Update user report |
+| DELETE | `/report/<crash_id>` | Delete user report |
+| GET | `/reports?limit=50` | List reports |
+
+---
+
+## Frontend (Mapbox UI)
+
+Main UI features:
+- Search place/address (Mapbox Geocoding)
+- Click map to set inspector + predict risk
+- Toggle layers:
+  - hotspots
+  - risk shading grid
+  - user reports
+- 24-hour animation (changes hour and updates prediction)
+- Submit accident report
+
+> “Risk shading (grid)” is a sampled overlay created by calling `/predict` on a grid of points in the viewport.
+
+---
+
+## How to Run
+
+### 1) Install dependencies
+```bash
+pip install -r requirements.txt
+
+2) Create DB + enable PostGIS
+createdb nyc_accident_db
+psql -d nyc_accident_db -c "CREATE EXTENSION postgis;"
+
+3) Run database schema
+psql -U postgres -d nyc_accident_db -f database/schema.sql
+
+4) Run ETL
+python etl/pipeline.py
+
+5) Train ML model (optional)
+python ml/train.py
+
+6) Start API
+python api/app.py
+
+7) Open Frontend
+
+Open:
+	•	frontend/index.html
 
 ⸻
 
-📌 Future Improvements
+Example Use Case
+	1.	User opens the app and searches “Times Square”
+	2.	Map flies to location and auto-predicts severity risk
+	3.	User toggles hotspots and sees crash cluster points
+	4.	User turns on risk shading to see how risk varies in the visible area
+	5.	User submits a report (stored and immediately visible on map)
 
-• Real-time traffic integration
-• Weather data integration
-• Deep learning models
-• Deployment to cloud (AWS / GCP)
-• Mobile app integration
+Future Improvements
+	•	Predict accident probability (not only severity) using exposure factors (traffic volume, road class, intersections)
+	•	Add borough inference using polygon lookup (point-in-polygon)
+	•	Improve risk grid rendering (server-side tiles or vector grid)
+	•	Deploy with Docker + production WSGI (gunicorn)
+	•	Add authentication for user reports
+Author(s)
 
-⸻
-
-
-👨‍💻 Author
-
-Tilak Kumar
-Vijay
-MSc Geospatial Technologies
-
+Tilak Kumar 
+vijay
